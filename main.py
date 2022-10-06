@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 base_path = pathlib.Path(__file__).parent.resolve()
 sys.path.append(os.path.join(base_path,'data/processed'))  # noqa
-sys.path.append(os.path.join(base_path,'scripts'))  # noqa
+sys.path.append(os.path.join(base_path,'scripts2'))  # noqa
 import ingest_data  # noqa
 import train_model  # noqa
 
