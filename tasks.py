@@ -959,7 +959,7 @@ def start_tracker_ui(c, platform=PLATFORM, env=DEV_ENV, port=8082):
         )
 
 
-@task(name="start_training")
+@task(name="start_training_optuna")
 def start_training(c, env=DEV_ENV):
     env_name = _get_env_name(env)
     with py_env(c, env_name):

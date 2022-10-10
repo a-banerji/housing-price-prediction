@@ -148,6 +148,9 @@ You now should have a standalone conda python environment and installed code in 
     -t STRING, --token=STRING
     ```
 
+# Directly running optimised script:
+inv launch.start_training_optuna it uses optuna for best param search in combination with grid-search. (code in scripts2 folder)
+
 # Frequently Asked Questions
 
 The FAQ for code templates during setting up, testing, development and adoption phases are available

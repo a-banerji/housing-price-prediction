@@ -10,6 +10,7 @@ import numpy as np
 import os
 import pandas as pd
 import pathlib
+import optuna
 import pickle
 import sys
 from scipy.stats import randint
@@ -24,7 +25,6 @@ from sklearn.model_selection import (
     train_test_split,
 )
 from sklearn.tree import DecisionTreeRegressor
-
 
 def fit_direct_data(housing, model_output_path='',
                     base_path=pathlib.Path(__file__).parent.parent.resolve()):
@@ -96,61 +96,39 @@ def fit_direct_data(housing, model_output_path='',
     housing_cat = housing[['ocean_proximity']]
     housing_prepared = housing_tr.join(
                         pd.get_dummies(housing_cat, drop_first=True))
+    
+    def objective(trial,housing_prepared=housing_prepared, housing_labels=housing_labels):
+        
+        global best_parms, grid_search
+        n_estimators=trial.suggest_int("n_estimators", 3, 30)
+        max_features=trial.suggest_int("max_features", 2, 8)
+        
+        param_grid = [
+            # try 12 (3×4) combinations of hyperparameters
+            {'n_estimators': [n_estimators], 'max_features': [max_features]},
+            # then try 6 (2×3) combinations with bootstrap set as False
+            {'bootstrap': [False], 'n_estimators': [n_estimators],
+             'max_features': [max_features]},
+        ]
 
-    lin_reg = LinearRegression()
-    lin_reg.fit(housing_prepared, housing_labels)
+        forest_reg = RandomForestRegressor(random_state=42)
+        # train across 5 folds, that's a total of (12+6)*5=90 rounds of training
+        grid_search = GridSearchCV(forest_reg, param_grid, cv=5,
+                                   scoring='neg_mean_squared_error',
+                                   return_train_score=True)
+        grid_search.fit(housing_prepared, housing_labels)
 
-    housing_predictions = lin_reg.predict(housing_prepared)
-    lin_mse = mean_squared_error(housing_labels, housing_predictions)
-    lin_rmse = np.sqrt(lin_mse)
-    lin_rmse
-
-    lin_mae = mean_absolute_error(housing_labels, housing_predictions)
-    lin_mae
-
-    tree_reg = DecisionTreeRegressor(random_state=42)
-    tree_reg.fit(housing_prepared, housing_labels)
-
-    housing_predictions = tree_reg.predict(housing_prepared)
-    tree_mse = mean_squared_error(housing_labels, housing_predictions)
-    tree_rmse = np.sqrt(tree_mse)
-    tree_rmse
-
-    param_distribs = {
-            'n_estimators': randint(low=1, high=200),
-            'max_features': randint(low=1, high=8),
-        }
-
-    forest_reg = RandomForestRegressor(random_state=42)
-    rnd_search = RandomizedSearchCV(forest_reg,
-                                    param_distributions=param_distribs,
-                                    n_iter=10, cv=5,
-                                    scoring='neg_mean_squared_error',
-                                    random_state=42)
-    rnd_search.fit(housing_prepared, housing_labels)
-    cvres = rnd_search.cv_results_
-    for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
-        print(np.sqrt(-mean_score), params)
-
-    param_grid = [
-        # try 12 (3×4) combinations of hyperparameters
-        {'n_estimators': [3, 10, 30], 'max_features': [2, 4, 6, 8]},
-        # then try 6 (2×3) combinations with bootstrap set as False
-        {'bootstrap': [False], 'n_estimators': [3, 10],
-         'max_features': [2, 3, 4]},
-    ]
-
-    forest_reg = RandomForestRegressor(random_state=42)
-    # train across 5 folds, that's a total of (12+6)*5=90 rounds of training
-    grid_search = GridSearchCV(forest_reg, param_grid, cv=5,
-                               scoring='neg_mean_squared_error',
-                               return_train_score=True)
-    grid_search.fit(housing_prepared, housing_labels)
-
-    best_parms = grid_search.best_params_
-    cvres = grid_search.cv_results_
-    for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
-        print(np.sqrt(-mean_score), params)
+        best_parms = grid_search.best_params_
+        cvres = grid_search.cv_results_
+        ss=[]
+        for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
+            print(np.sqrt(-mean_score), params)
+            ss.append(np.sqrt(-mean_score))
+        print(np.mean(ss))
+        return np.mean(ss)
+    
+    study = optuna.create_study(direction='minimize')
+    study.optimize(lambda trial: objective(trial, housing_prepared=housing_prepared, housing_labels=housing_labels), n_trials=50)
 
     feature_importances = grid_search.best_estimator_.feature_importances_
     sorted(zip(feature_importances, housing_prepared.columns), reverse=True)

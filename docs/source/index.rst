@@ -15,6 +15,7 @@ Welcome to Mle-Training documentation!
    api_guide
    user_guide
    best_practices
+   hyperparameter_tuning
 
 
 Indices and tables
