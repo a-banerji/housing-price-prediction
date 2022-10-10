@@ -100,10 +100,10 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
-docs/source/_autosummary/
-docs_template/source/_autosummary
-docs_template/_build/
+# docs/_build/
+# docs/source/_autosummary/
+# docs_template/source/_autosummary
+# docs_template/_build/
 
 # PyBuilder
 target/
